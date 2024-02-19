@@ -1,3 +1,5 @@
+import sql
+
 import telebot
 from telebot import types
 
@@ -13,8 +15,12 @@ def ocr_core(filename):
     text = pytesseract.image_to_string(Image.open(filename), lang='rus+eng') 
     return text 
 
-
-
+def test_sql():
+    d = ("Roga & copita", "Ivanov Ivan Ivanovich", "Manager", "+71234567890", "+70123654789", "example@example.ru", "www.example.example")
+    d1 = ("TVOY ROT", "Petr Evgenevich", "", "+71234567890", "", "example@example.ru", "www.example.example")
+    sql.createDb()
+    sql.insertDb(d)
+    sql.excelDb()
 
 
 
@@ -35,7 +41,7 @@ def get_text_messages(message):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True) #создание новых кнопок
         btn1 = types.KeyboardButton('Как стать автором на Хабре?')
         btn2 = types.KeyboardButton('Правила сайта')
-        btn3 = types.KeyboardButton('Советы по оформлению публикации')
+        btn3 = types.KeyboardButton('Получить Excel')
         markup.add(btn1, btn2, btn3)
         bot.send_message(message.from_user.id, '❓ Задайте интересующий вас вопрос', reply_markup=markup) #ответ бота
 
@@ -46,8 +52,11 @@ def get_text_messages(message):
     elif message.text == 'Правила сайта':
         bot.send_message(message.from_user.id, 'Прочитать правила сайта вы можете по ' + '[ссылке](https://habr.com/ru/docs/help/rules/)', parse_mode='Markdown')
 
-    elif message.text == 'Советы по оформлению публикации':
-        bot.send_message(message.from_user.id, 'Подробно про советы по оформлению публикаций прочитать по ' + '[ссылке](https://habr.com/ru/docs/companies/design/)', parse_mode='Markdown')
+    elif message.text == 'Получить Excel':
+        test_sql()
+        f = open("out.xlsx", "rb")
+        bot.send_document(message.from_user.id, f)
+        #bot.send_message(message.from_user.id, 'Подробно про советы по оформлению публикаций прочитать по ' + '[ссылке](https://habr.com/ru/docs/companies/design/)', parse_mode='Markdown')
 
 
 @bot.message_handler(content_types=['photo'])
