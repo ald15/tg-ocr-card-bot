@@ -1,7 +1,8 @@
+import os
 import sqlite3
 import pandas as pd
-import os
 
+# Процедура создания БД
 def createDb(db_name = './sqlite_python.db'):
     if not os.path.isfile(db_name):
         conn = sqlite3.connect(db_name)
@@ -24,6 +25,7 @@ def createDb(db_name = './sqlite_python.db'):
         if conn: conn.close()
 
 
+# Процедура добавления данных в БД
 def insertDb(data, db_name = './sqlite_python.db'):
     conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
@@ -44,6 +46,7 @@ def insertDb(data, db_name = './sqlite_python.db'):
     if conn: conn.close()
 
 
+# Функция получения данных из БД
 def selectDb(p = 0, db_name = './sqlite_python.db'):
     conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
@@ -58,6 +61,7 @@ def selectDb(p = 0, db_name = './sqlite_python.db'):
     if conn: conn.close()
     
 
+# Процедура преобразования данных в .xlsx
 def excelDb(out_file = "./out.xlsx", db_name = './sqlite_python.db'):
     d = {
             "id": [],
@@ -80,6 +84,7 @@ def excelDb(out_file = "./out.xlsx", db_name = './sqlite_python.db'):
     df.to_excel(out_file)
 
 
+# Функция для получения id последней записи в БД
 def lastIdInDb(db_name = './sqlite_python.db'):
     conn = sqlite3.connect(db_name)
     query = '''
@@ -94,13 +99,9 @@ def lastIdInDb(db_name = './sqlite_python.db'):
     if conn: conn.close()
     return str(data)
 
-
-d = ("Roga & copita", "Ivanov Ivan Ivanovich", "Manager", "+71234567890", "+70123654789", "example@example.ru", "www.example.example")   
+# Тестирование
+#d = ("Test company", "Ivanov Ivan Ivanovich", "Manager", "+71234567890", "+70123654789", "example@example.ru", "www.example.com")   
 #createDb()
-#insertDb(d)
-#insertDb(d)
-#insertDb(d)
-#insertDb(d)
 #insertDb(d)
 #selectDb(1) 
 #excelDb()
