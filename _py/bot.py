@@ -2,6 +2,7 @@ import telebot
 import pytesseract
 import shutil
 from _py import sql
+from _py import DataProcessor as DP
 from telebot import types
 try: from PIL import Image
 except ImportError: import Image
@@ -67,7 +68,18 @@ def start():
             new_file.write(downloaded_file)
         sql.createDb() # Создание БД, если это необходимо
         raw_data = ocr_core(f_name) # Сырые данные, полученнные из OCR
-        data = ("1", "1", "1", "1", "1", "1", "1") # Преобразованные данные
+        dp = DP.DataProcessor(raw_data)
+        bot.send_message(message.from_user.id, text=raw_data)
+
+        ```test```
+        markup = types.InlineKeyboardMarkup()
+        button1 = types.InlineKeyboardButton("Сайт Хабр", url='https://habr.com/ru/all/')
+        markup.add(button1)
+        bot.send_message(message.chat.id, raw_data.format(message.from_user), reply_markup=markup)
+        ```test```
+        
+        data = dp.dataExtract()
+        # data = ("1", "1", "1", "1", "1", "1", "1") # Преобразованные данные
         sql.insertDb(data) # Добавление данных в БД
         save_image(f_name, d_name) # Сохранение картинки
         
