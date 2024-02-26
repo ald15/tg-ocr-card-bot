@@ -94,7 +94,9 @@ def lastIdInDb(db_name = './sqlite_python.db'):
             '''
     cursor = conn.cursor()
     cursor.execute(query)
-    data = cursor.fetchall()[0][0]
+    data = cursor.fetchall()
+    if len(data) == 0: return -1
+    data = data[0][0]
     cursor.close()
     if conn: conn.close()
     return str(data)

@@ -1,17 +1,6 @@
 from _py import bot
 
+print(">>> Бот был успешно запущен!")
 bot.start()
+print(">>> Бот был успешно выключен!")
 
-'''
-for i in range(1000):
-    print(">>> Бот был успешно запущен!")
-    try: bot.start()
-    except: pass
-    print(">>> Бот был успешно выключен!")
-'''
-'''
-try:
-    bot.start()
-except:
-    bot.start()
-'''
