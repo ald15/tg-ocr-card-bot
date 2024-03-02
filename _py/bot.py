@@ -71,7 +71,75 @@ def start():
                 bot.send_document(message.from_user.id, open(out_file, "rb")) # Отправка Excel файла пользователю 
                 bot.send_message(message.from_user.id, f'Файл {out_file.lstrip("./")} - таблица, содержащая все добавленные визитные карточки.', parse_mode='Markdown')
             else: # БД пуста -> извещаем пользователя о невозможности проведения операции
-                bot.send_message(message.from_user.id, f'Таблица не может быть сформирована, т.к. отсутствует информация о визитных карточках.', parse_mode='Markdown')
+                bot.send_message(message.from_user.id, f'Таблица не может быть сформирована, т.к. отсутствует информация о визитных карточках.', parse_mode='Markdown')  
+
+    @bot.callback_query_handler(func=lambda call: call.data.split(';')[0] == 'Edit note')
+    def get_card_number(call):
+        cur_card_id = call.data.split(';')[1]
+        message = call.message
+        chat_id = message.chat.id
+        
+        markup = types.InlineKeyboardMarkup()
+        button_company = types.InlineKeyboardButton('Изменить поле Компания', callback_data='Editcompany;' + cur_card_id)
+        button_name = types.InlineKeyboardButton('Изменить поле ФИО', callback_data='Editname;' + cur_card_id)
+        button_post = types.InlineKeyboardButton('Изменить поле Должность', callback_data='Editpost;' + cur_card_id)
+        button_tel1 = types.InlineKeyboardButton('Изменить поле Тел. №1', callback_data='Edittel1;' + cur_card_id)
+        button_tel2 = types.InlineKeyboardButton('Изменить поле Тел. №2', callback_data='Edittel2;'+ cur_card_id)
+        button_email = types.InlineKeyboardButton('Изменить поле E-mail', callback_data='Editemail;' + cur_card_id)
+        button_site = types.InlineKeyboardButton('Изменить поле Сайт', callback_data='Editsite;' + cur_card_id)
+        button_comment = types.InlineKeyboardButton('Изменить поле Комментарий', callback_data='Editcomment;'+ cur_card_id)
+        markup.add(button_company)
+        markup.add(button_name)
+        markup.add(button_post)
+        markup.add(button_tel1)
+        markup.add(button_tel2)
+        markup.add(button_email)
+        markup.add(button_site)
+        markup.add(button_comment)
+
+        bot.send_message(chat_id, f"Вы редактируете визитку - {cur_card_id}\nВыберите поле для редактирования:", reply_markup=markup)
+
+    @bot.callback_query_handler(func=lambda call: call.data.split(';')[0] == 'Editcompany')
+    def edit_btn_company(call):
+        cur_card_id = call.data.split(';')[1]
+        message = call.message
+        chat_id = message.chat.id
+        bot.send_message(chat_id, f'Введите Компанию')
+        bot.register_next_step_handler(message, handler_company, cur_card_id)
+
+    def handler_company(message, val):
+        chat_id = message.chat.id
+        input_data = message.text
+        keyboard = telebot.types.InlineKeyboardMarkup()
+        button_save = telebot.types.InlineKeyboardButton(text="Сохранить",
+                                                     callback_data=f'Save company;{input_data};{val}')
+        button_change = telebot.types.InlineKeyboardButton(text="Изменить",
+                                                       callback_data='Editcompany; ')
+        keyboard.add(button_save, button_change)
+
+        bot.send_message(chat_id, f'Сохранить данные?', reply_markup=keyboard)
+
+    @bot.callback_query_handler(func=lambda call: call.data.split(';')[0] == 'Save company')
+    def save_company(call):
+        data = call.data.split(';')
+        key = data[2]
+        val = data[1]
+        column = 'company'
+        sql.updateDb(key, val, column)
+
+        message = call.message
+        chat_id = message.chat.id
+        bot.send_message(chat_id, f"Сохранено")
+
+
+
+    
+    def show_data(data: tuple) -> str:
+        res = ''
+        names = ('Компания', 'ФИО', 'Должность', 'Тел. №1', 'Тел. №2', 'E-mail', 'Сайт', 'Комментарий')
+        for i in range(len(names)):
+            res += f'{names[i]}: {data[i]}\n'
+        return res
 
     # Обработчик сообщений-изображение
     @bot.message_handler(content_types=['photo'])
@@ -83,18 +151,36 @@ def start():
             new_file.write(downloaded_file)
         raw_data = ocr_core(f_name) # Сырые данные, полученнные из OCR
         dp = DP.DataProcessor(raw_data)
-        bot.send_message(message.from_user.id, text=raw_data)
+        print(dp.dataExtract())
+        print(*dp.dataExtract())
+        data = (*dp.dataExtract(), "")
+        print(str(data))
+
+        # data = ("1", "1", "1", "1", "1", "1", "1", "1") # Преобразованные данные
+        sql.insertDb(data) # Добавление данных в БД
+        save_image(f_name, d_name) # Сохранение картинки
 
     
         markup = types.InlineKeyboardMarkup()
-        button1 = types.InlineKeyboardButton("Сайт Хабр", url='https://habr.com/ru/all/')
+        cur_card_id = sql.lastIdInDb()
+        button1 = types.InlineKeyboardButton('Изменить запись', callback_data=f'Edit note;{cur_card_id}')
         markup.add(button1)
-        bot.send_message(message.chat.id, raw_data.format(message.from_user), reply_markup=markup)
+
+        bot.send_message(message.chat.id, f"Номер визитки: {cur_card_id}\n" + "Полученная информация:\n" + \
+            show_data(data).format(message.from_user), reply_markup=markup)
+
+        # ...
+        #bot.send_message(message.from_user.id, text=raw_data)
+
+    
+        #markup = types.InlineKeyboardMarkup()
+        #button1 = types.InlineKeyboardButton("Сайт Хабр", url='https://habr.com/ru/all/')
+        #markup.add(button1)
+        #bot.send_message(message.chat.id, raw_data.format(message.from_user), reply_markup=markup)
         
-        data = dp.dataExtract()
-        # data = ("1", "1", "1", "1", "1", "1", "1") # Преобразованные данные
-        sql.insertDb(data) # Добавление данных в БД
-        save_image(f_name, d_name) # Сохранение картинки
+        
+        
+        
         
     
     bot.polling(none_stop=False, interval=1) # Обязательная для работы бота часть

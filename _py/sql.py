@@ -39,9 +39,24 @@ def insertDb(data, db_name = './sqlite_python.db'):
                     tel2,
                     email,
                     site,
-                    comment,
+                    comment
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
             '''
+    cursor.execute(query, data)
+    conn.commit()
+    cursor.close()
+    if conn: conn.close()
+
+# Процедура обновления данных в БД
+def updateDb(key, val, column, db_name = './sqlite_python.db'):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    query  = '''
+                UPDATE cards
+                    SET company = ?
+                    WHERE id = ?;
+            '''
+    data = (val, key)
     cursor.execute(query, data)
     conn.commit()
     cursor.close()
