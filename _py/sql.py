@@ -51,9 +51,9 @@ def insertDb(data, db_name = './sqlite_python.db'):
 def updateDb(key, val, column, db_name = './sqlite_python.db'):
     conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
-    query  = '''
+    query  = f'''
                 UPDATE cards
-                    SET company = ?
+                    SET {column} = ?
                     WHERE id = ?;
             '''
     data = (val, key)
