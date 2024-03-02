@@ -14,8 +14,9 @@ def createDb(db_name = './sqlite_python.db'):
                     post TEXT,
                     tel1 TEXT,
                     tel2 TEXT,
-                    email text,
-                    site text
+                    email TEXT,
+                    site TEXT,
+                    comment TEXT
                     );
                 '''
         cursor = conn.cursor()
@@ -37,8 +38,9 @@ def insertDb(data, db_name = './sqlite_python.db'):
                     tel1,
                     tel2,
                     email,
-                    site
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?);
+                    site,
+                    comment,
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
             '''
     cursor.execute(query, data)
     conn.commit()
@@ -72,6 +74,7 @@ def excelDb(out_file = "./out.xlsx", db_name = './sqlite_python.db'):
             "Тел. №2": [],
             "E-mail": [],
             "Сайт": [],
+            "Комментарий": []
         }
     data = selectDb(0, db_name)
     temp_data = [[] for i in range(len(d.keys()))]
