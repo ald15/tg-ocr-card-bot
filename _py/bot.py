@@ -8,14 +8,15 @@ from telebot import types
 try: from PIL import Image
 except ImportError: import Image
 
+with open("token.txt", "r+") as f: # Считывание telegram token из файла
+    token = f.readlines()[0].strip() 
+bot = telebot.TeleBot(token)
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-bot = telebot.TeleBot('6473764124:AAHx0vL35z5gK1r4PElgagK5W8KKZWLXknc')
 f_name = "./image.jpg" # Имя временного файла-картинки
 d_name = "./img/" # Директория для постоянного хранения картинок
 out_file = "./out.xlsx" # Имя Excel файла
 archive_name = "./out" # Имя архива с картинками
 archive_dir = d_name[:] # Директория архива с картинками
-text_instruction = '''Для начала работы с ботом''' # дописать
 
 sql.createDb() # Создание БД, если это необходимо
 if not os.path.isdir(d_name): # Создание директории для постоянного хранения картинок, если это необходимо
@@ -56,7 +57,7 @@ def start():
             markup.add(btn1, btn2, btn3)
             bot.send_message(message.from_user.id, '❓ Задайте интересующий вас вопрос', reply_markup=markup) #ответ бота
         elif message.text == 'Как пользоваться ботом?': # Дописать инсструкцию!
-            bot.send_message(message.from_user.id, f'{text_instruction}', parse_mode='Markdown')
+            bot.send_message(message.from_user.id, '*В разработке*', parse_mode='Markdown')
         elif message.text == 'Получить фото-архив карточек':
             if int(sql.lastIdInDb()) >= 0: # Проверка на наличие записей в БД
                 create_archive(archive_name, archive_dir) # Создание архива картинок
@@ -142,9 +143,9 @@ def start():
         message = call.message
         chat_id = message.chat.id
         bot.send_message(chat_id, f"Карточка сохранена, жду новых фото")
-        # дописать
 
 
+    
     def show_data(data: tuple) -> str:
         res = ''
         names = ('Компания', 'ФИО', 'Должность', 'Тел. №1', 'Тел. №2', 'E-mail', 'Сайт', 'Комментарий')
@@ -162,8 +163,10 @@ def start():
             new_file.write(downloaded_file)
         raw_data = ocr_core(f_name) # Сырые данные, полученнные из OCR
         dp = DP.DataProcessor(raw_data)
+        print(dp.dataExtract())
+        print(*dp.dataExtract())
         data = (*dp.dataExtract(), "")
-        print('Log.dataExtract.result: ' + str(data))
+        print(str(data))
 
         # data = ("1", "1", "1", "1", "1", "1", "1", "1") # Преобразованные данные
         sql.insertDb(data) # Добавление данных в БД
@@ -188,5 +191,10 @@ def start():
         #button1 = types.InlineKeyboardButton("Сайт Хабр", url='https://habr.com/ru/all/')
         #markup.add(button1)
         #bot.send_message(message.chat.id, raw_data.format(message.from_user), reply_markup=markup)
-                                    
+        
+        
+        
+        
+        
+    
     bot.polling(none_stop=False, interval=1) # Обязательная для работы бота часть
