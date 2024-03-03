@@ -185,7 +185,6 @@ class DataProcessor():
         email = ''
         site = ''
         str_list = self.input.split('\n')
-        print(str_list)
         for s in str_list:
             if self.getPost(s) != '':
                 post = self.getPost(s)
