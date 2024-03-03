@@ -17,6 +17,25 @@ d_name = "./img/" # Директория для постоянного хран�
 out_file = "./out.xlsx" # Имя Excel файла
 archive_name = "./out" # Имя архива с картинками
 archive_dir = d_name[:] # Директория архива с картинками
+text_instruction = """*Инструкция по использованию*
+
+__1\. Добавление карточки__
+
+Чтобы добавить новую карточку в бота, необходимо просто отправить фотографию визитки\. Далее бот предложит действия по сохранению или её редактированию\.
+
+__2\. Изменение карточки__
+
+Чтобы редактировать вручную поля карточки, необходимо нажать кнопку "изменить", которую Вам предложит бот после отправки фотографии\.
+Затем выбрать поле, подлежащее изменению, и отправить сообщение боту с правильным текстом в записи\.
+Дополнительные изменения Вы всегда можете применить нажав кнопку "изменить" для соответствующей карточки повторно\.
+
+__3\. Опсиание кнопок__
+
+В меню отправки сообщений Вам всегда будут доступны 3 кнопки:
+\- "Как пользоваться ботом?" \- инструкция по использованию бота;
+\- "Получить фото\-архив карточек" \- бот отправит файл с архивом из всех фотографий, которые прислали пользователи;
+\- "Получить таблицу карточек" \- бот отправит excel файл со всеми записями по визиткам, которые запомнил бот;"""
+
 
 sql.createDb() # Создание БД, если это необходимо
 if not os.path.isdir(d_name): # Создание директории для постоянного хранения картинок, если это необходимо
@@ -57,7 +76,7 @@ def start():
             markup.add(btn1, btn2, btn3)
             bot.send_message(message.from_user.id, '❓ Задайте интересующий вас вопрос', reply_markup=markup) #ответ бота
         elif message.text == 'Как пользоваться ботом?': # Дописать инсструкцию!
-            bot.send_message(message.from_user.id, '*В разработке*', parse_mode='Markdown')
+            bot.send_message(message.from_user.id, f'{text_instruction}', parse_mode='MarkdownV2')
         elif message.text == 'Получить фото-архив карточек':
             if int(sql.lastIdInDb()) >= 0: # Проверка на наличие записей в БД
                 create_archive(archive_name, archive_dir) # Создание архива картинок
@@ -98,17 +117,18 @@ def start():
         markup.add(button_site)
         markup.add(button_comment)
 
-        bot.send_message(chat_id, f"Вы редактируете визитку - {cur_card_id}\nВыберите поле для редактирования:", reply_markup=markup)
+        bot.send_message(chat_id, f"Вы редактируете визитку: {cur_card_id}\nВыберите поле для редактирования:", reply_markup=markup)
 
     @bot.callback_query_handler(func=lambda call: call.data.split(';')[0] == 'Edit')
     def edit_btn(call):
         bot.delete_message(call.message.chat.id, call.message.message_id)
         column_ru = call.data.split(';')[2]
+        cur_card_id = call.data.split(';')[3]
         data = call.data
 
         message = call.message
         chat_id = message.chat.id
-        bot.send_message(chat_id, f'Введите новое поле {column_ru}')
+        bot.send_message(chat_id, f'Вы редактируете визитку: {cur_card_id}\nВведите новое поле {column_ru}')
         bot.register_next_step_handler(message, handler_edit, data)
 
     def handler_edit(message, data):
@@ -123,7 +143,7 @@ def start():
                                                        callback_data=data)
         keyboard.add(button_save, button_change)
 
-        bot.send_message(chat_id, f'Сохранить данные?', reply_markup=keyboard)
+        bot.send_message(chat_id, f'Сохранить данные?\nполе {column_ru} значение: {input_data}', reply_markup=keyboard)
 
     @bot.callback_query_handler(func=lambda call: call.data.split(';')[0] == 'Save')
     def save_column(call):
@@ -136,14 +156,16 @@ def start():
 
         message = call.message
         chat_id = message.chat.id
-        bot.send_message(chat_id, f"Сохранено")
+        asnwr_bd = sql.selectrowDb(key)[0]
+        res_str = show_data(asnwr_bd[1:])
+        bot.send_message(chat_id, f"*Сохранены изменения (Карточка {key})*\n{res_str}\n*Жду новых фото или изменений*")
+        
 
     @bot.callback_query_handler(func=lambda call: call.data == 'Done')
     def save_column(call):
         message = call.message
         chat_id = message.chat.id
         bot.send_message(chat_id, f"Карточка сохранена, жду новых фото")
-
 
     
     def show_data(data: tuple) -> str:
@@ -172,7 +194,6 @@ def start():
         sql.insertDb(data) # Добавление данных в БД
         save_image(f_name, d_name) # Сохранение картинки
 
-    
         markup = types.InlineKeyboardMarkup()
         cur_card_id = sql.lastIdInDb()
         button1 = types.InlineKeyboardButton('Изменить запись', callback_data=f'Edit note;{cur_card_id}')
@@ -180,7 +201,7 @@ def start():
         markup.add(button1)
         markup.add(button2)
 
-        bot.send_message(message.chat.id, f"Номер визитки: {cur_card_id}\n" + "Полученная информация:\n" + \
+        bot.send_message(message.chat.id, f"*Номер визитки: {cur_card_id}*\n" + "Полученная информация:\n" + \
             show_data(data).format(message.from_user), reply_markup=markup)
 
         # ...
@@ -191,10 +212,5 @@ def start():
         #button1 = types.InlineKeyboardButton("Сайт Хабр", url='https://habr.com/ru/all/')
         #markup.add(button1)
         #bot.send_message(message.chat.id, raw_data.format(message.from_user), reply_markup=markup)
-        
-        
-        
-        
-        
-    
+                          
     bot.polling(none_stop=False, interval=1) # Обязательная для работы бота часть

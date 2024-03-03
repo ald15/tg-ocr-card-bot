@@ -76,6 +76,16 @@ def selectDb(p = 0, db_name = './sqlite_python.db'):
         for row in data: print(data)
     return data
     if conn: conn.close()
+
+def selectrowDb(key_id, db_name = './sqlite_python.db'):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    query = f"SELECT * FROM cards WHERE id = {key_id};"
+    cursor.execute(query)
+    data = cursor.fetchall()
+    cursor.close()
+    if conn: conn.close()
+    return data
     
 
 # Процедура преобразования данных в .xlsx
