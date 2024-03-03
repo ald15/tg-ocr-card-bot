@@ -14,8 +14,9 @@ def createDb(db_name = './sqlite_python.db'):
                     post TEXT,
                     tel1 TEXT,
                     tel2 TEXT,
-                    email text,
-                    site text
+                    email TEXT,
+                    site TEXT,
+                    comment TEXT
                     );
                 '''
         cursor = conn.cursor()
@@ -37,9 +38,25 @@ def insertDb(data, db_name = './sqlite_python.db'):
                     tel1,
                     tel2,
                     email,
-                    site
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?);
+                    site,
+                    comment
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
             '''
+    cursor.execute(query, data)
+    conn.commit()
+    cursor.close()
+    if conn: conn.close()
+
+# Процедура обновления данных в БД
+def updateDb(key, val, column, db_name = './sqlite_python.db'):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    query  = f'''
+                UPDATE cards
+                    SET {column} = ?
+                    WHERE id = ?;
+            '''
+    data = (val, key)
     cursor.execute(query, data)
     conn.commit()
     cursor.close()
@@ -72,6 +89,7 @@ def excelDb(out_file = "./out.xlsx", db_name = './sqlite_python.db'):
             "Тел. №2": [],
             "E-mail": [],
             "Сайт": [],
+            "Комментарий": []
         }
     data = selectDb(0, db_name)
     temp_data = [[] for i in range(len(d.keys()))]
