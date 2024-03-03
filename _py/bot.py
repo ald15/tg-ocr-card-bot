@@ -8,7 +8,6 @@ from telebot import types
 try: from PIL import Image
 except ImportError: import Image
 
-
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 bot = telebot.TeleBot('6473764124:AAHx0vL35z5gK1r4PElgagK5W8KKZWLXknc')
 f_name = "./image.jpg" # Имя временного файла-картинки
@@ -16,7 +15,6 @@ d_name = "./img/" # Директория для постоянного хран�
 out_file = "./out.xlsx" # Имя Excel файла
 archive_name = "./out" # Имя архива с картинками
 archive_dir = d_name[:] # Директория архива с картинками
-
 
 sql.createDb() # Создание БД, если это необходимо
 if not os.path.isdir(d_name): # Создание директории для постоянного хранения картинок, если это необходимо
@@ -78,16 +76,17 @@ def start():
         cur_card_id = call.data.split(';')[1]
         message = call.message
         chat_id = message.chat.id
+        msg_id = message.message_id
         
         markup = types.InlineKeyboardMarkup()
-        button_company = types.InlineKeyboardButton('Изменить поле Компания', callback_data='Editcompany;' + cur_card_id)
-        button_name = types.InlineKeyboardButton('Изменить поле ФИО', callback_data='Editname;' + cur_card_id)
-        button_post = types.InlineKeyboardButton('Изменить поле Должность', callback_data='Editpost;' + cur_card_id)
-        button_tel1 = types.InlineKeyboardButton('Изменить поле Тел. №1', callback_data='Edittel1;' + cur_card_id)
-        button_tel2 = types.InlineKeyboardButton('Изменить поле Тел. №2', callback_data='Edittel2;'+ cur_card_id)
-        button_email = types.InlineKeyboardButton('Изменить поле E-mail', callback_data='Editemail;' + cur_card_id)
-        button_site = types.InlineKeyboardButton('Изменить поле Сайт', callback_data='Editsite;' + cur_card_id)
-        button_comment = types.InlineKeyboardButton('Изменить поле Комментарий', callback_data='Editcomment;'+ cur_card_id)
+        button_company = types.InlineKeyboardButton('Изменить поле Компания', callback_data='Edit;company;Компания;' + cur_card_id + f';{msg_id}')
+        button_name = types.InlineKeyboardButton('Изменить поле ФИО', callback_data='Edit;name;ФИО;' + cur_card_id + f';{msg_id}')
+        button_post = types.InlineKeyboardButton('Изменить поле Должность', callback_data='Edit;post;Должность;' + cur_card_id + f';{msg_id}')
+        button_tel1 = types.InlineKeyboardButton('Изменить поле Тел. №1', callback_data='Edit;tel1;Тел. №1;' + cur_card_id + f';{msg_id}')
+        button_tel2 = types.InlineKeyboardButton('Изменить поле Тел. №2', callback_data='Edit;tel2;Тел. №2;'+ cur_card_id + f';{msg_id}')
+        button_email = types.InlineKeyboardButton('Изменить поле E-mail', callback_data='Edit;email;E-mail;' + cur_card_id + f';{msg_id}')
+        button_site = types.InlineKeyboardButton('Изменить поле Сайт', callback_data='Edit;site;Сайт;' + cur_card_id + f';{msg_id}')
+        button_comment = types.InlineKeyboardButton('Изменить поле Комментарий', callback_data='Edit;comment;Комментарий;'+ cur_card_id + f';{msg_id}')
         markup.add(button_company)
         markup.add(button_name)
         markup.add(button_post)
@@ -99,38 +98,49 @@ def start():
 
         bot.send_message(chat_id, f"Вы редактируете визитку - {cur_card_id}\nВыберите поле для редактирования:", reply_markup=markup)
 
-    @bot.callback_query_handler(func=lambda call: call.data.split(';')[0] == 'Editcompany')
-    def edit_btn_company(call):
-        cur_card_id = call.data.split(';')[1]
+    @bot.callback_query_handler(func=lambda call: call.data.split(';')[0] == 'Edit')
+    def edit_btn(call):
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+        column_ru = call.data.split(';')[2]
+        data = call.data
+
         message = call.message
         chat_id = message.chat.id
-        bot.send_message(chat_id, f'Введите Компанию')
-        bot.register_next_step_handler(message, handler_company, cur_card_id)
+        bot.send_message(chat_id, f'Введите новое поле {column_ru}')
+        bot.register_next_step_handler(message, handler_edit, data)
 
-    def handler_company(message, val):
+    def handler_edit(message, data):
         chat_id = message.chat.id
         input_data = message.text
         keyboard = telebot.types.InlineKeyboardMarkup()
+
+        column_ru = data.split(';')[2]
         button_save = telebot.types.InlineKeyboardButton(text="Сохранить",
-                                                     callback_data=f'Save company;{input_data};{val}')
+                                                     callback_data=f'Save;{input_data};{data}')
         button_change = telebot.types.InlineKeyboardButton(text="Изменить",
-                                                       callback_data='Editcompany; ')
+                                                       callback_data=data)
         keyboard.add(button_save, button_change)
 
         bot.send_message(chat_id, f'Сохранить данные?', reply_markup=keyboard)
 
-    @bot.callback_query_handler(func=lambda call: call.data.split(';')[0] == 'Save company')
-    def save_company(call):
+    @bot.callback_query_handler(func=lambda call: call.data.split(';')[0] == 'Save')
+    def save_column(call):
+        # call - Save;input_data;Edit;column_eng;column_ru;cur_card_id
         data = call.data.split(';')
-        key = data[2]
+        key = data[5]
         val = data[1]
-        column = 'company'
+        column = data[3]
         sql.updateDb(key, val, column)
 
         message = call.message
         chat_id = message.chat.id
         bot.send_message(chat_id, f"Сохранено")
 
+    @bot.callback_query_handler(func=lambda call: call.data == 'Done')
+    def save_column(call):
+        message = call.message
+        chat_id = message.chat.id
+        bot.send_message(chat_id, f"Карточка сохранена, жду новых фото")
 
 
     
@@ -164,7 +174,9 @@ def start():
         markup = types.InlineKeyboardMarkup()
         cur_card_id = sql.lastIdInDb()
         button1 = types.InlineKeyboardButton('Изменить запись', callback_data=f'Edit note;{cur_card_id}')
+        button2 = types.InlineKeyboardButton('Все верно', callback_data=f'Done')
         markup.add(button1)
+        markup.add(button2)
 
         bot.send_message(message.chat.id, f"Номер визитки: {cur_card_id}\n" + "Полученная информация:\n" + \
             show_data(data).format(message.from_user), reply_markup=markup)
