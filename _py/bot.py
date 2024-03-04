@@ -28,14 +28,15 @@ __2\. Изменение карточки__
 
 Чтобы редактировать вручную поля карточки, необходимо нажать кнопку "изменить", которую Вам предложит бот после отправки фотографии\.
 Затем выбрать поле, подлежащее изменению, и отправить сообщение боту с правильным текстом в записи\.
-Дополнительные изменения Вы всегда можете применить нажав кнопку "изменить" для соответствующей карточки повторно\.
 
-__3\. Опсиание кнопок__
+Дополнительные изменения Вы всегда можете применить, нажав кнопку "изменить" для соответствующей карточки повторно\.
+
+__3\. Описиание кнопок__
 
 В меню отправки сообщений Вам всегда будут доступны 3 кнопки:
 \- "Как пользоваться ботом?" \- инструкция по использованию бота;
 \- "Получить фото\-архив карточек" \- бот отправит файл с архивом из всех фотографий, которые прислали пользователи;
-\- "Получить таблицу карточек" \- бот отправит excel файл со всеми записями по визиткам, которые запомнил бот;"""
+\- "Получить таблицу карточек" \- бот отправит excel файл со всеми записями по визиткам, которые запомнил бот\."""
 
 
 class MyCallbackData():
@@ -137,7 +138,8 @@ def start():
         message = call.message
         chat_id = message.chat.id
         bot.send_message(chat_id, f'Вы редактируете визитку: {cur_card_id}\nВведите новое поле {column_ru}')
-        bot.register_next_step_handler(message, handler_edit, data)
+        #bot.register_next_step_handler(message, handler_edit, data)
+        bot.register_next_step_handler(message, save_column, data)
 
     def handler_edit(message, data):
         chat_id = message.chat.id
@@ -154,26 +156,38 @@ def start():
 
         bot.send_message(chat_id, f'Сохранить данные?\nполе {column_ru} значение: {input_data}', reply_markup=keyboard)
 
-    @bot.callback_query_handler(func=lambda call: call.data.split(';')[0] == 'Save')
-    def save_column(call):
+    #@bot.callback_query_handler(func=lambda call: call.data.split(';')[0] == 'Save')
+    def save_column(message, data):
         # call - Save;input_data;Edit;column_eng;column_ru;cur_card_id
-        data = call.data.split(';')
-        key = data[5]
-        key_data_id = data[1]
-        val = sqlEditor.selectrowDb(key_data_id)[0][1]
+        # data - Edit;column_eng;column_ru;cur_card_id
+        chat_id = message.chat.id
+        input_data = message.text
+        #key_data_id = sqlEditor.insertDb(input_data)
+
+        data = data.split(';')
+        key = data[3]
+        #key_data_id = data[1]
+        #val = sqlEditor.selectrowDb(key_data_id)[0][1]
+        val = input_data
         #print(val)
-        column = data[3]
+        column = data[1]
         sqlNotes.updateDb(key, val, column)
 
-        message = call.message
-        chat_id = message.chat.id
+        #message = call.message
+        #chat_id = message.chat.id
         asnwr_bd = sqlNotes.selectrowDb(key)[0]
         res_str = show_data(asnwr_bd[1:])
-        bot.send_message(chat_id, f"*Сохранены изменения (Карточка {key})*\n{res_str}\n*Жду новых фото или изменений*")
+
+        cur_card_id = key
+
+        markup = types.InlineKeyboardMarkup()
+        button1 = types.InlineKeyboardButton('Изменить запись повторно', callback_data=f'Edit note;{cur_card_id}')
+        markup.add(button1)
+        bot.send_message(chat_id, f"Сохранены изменения (Карточка {key})\n{res_str}\nЖду новых фото или изменений", reply_markup=markup)
         
 
     @bot.callback_query_handler(func=lambda call: call.data == 'Done')
-    def save_column(call):
+    def save_answr(call):
         message = call.message
         chat_id = message.chat.id
         bot.send_message(chat_id, f"Карточка сохранена, жду новых фото")
