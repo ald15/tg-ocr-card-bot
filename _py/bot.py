@@ -2,7 +2,8 @@ import telebot
 import pytesseract
 import shutil
 import os
-from _py import sql
+from _py import sqlNotes
+from _py import sqlEditor
 from _py import DataProcessor as DP
 from telebot import types
 try: from PIL import Image
@@ -12,6 +13,7 @@ with open("token.txt", "r+") as f: # Считывание telegram token из ф
     token = f.readlines()[0].strip() 
 bot = telebot.TeleBot(token)
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+#arbitrary_callback_data = True
 f_name = "./image.jpg" # Имя временного файла-картинки
 d_name = "./img/" # Директория для постоянного хранения картинок
 out_file = "./out.xlsx" # Имя Excel файла
@@ -20,7 +22,6 @@ archive_dir = d_name[:] # Директория архива с картинка�
 text_instruction = """*Инструкция по использованию*
 
 __1\. Добавление карточки__
-
 Чтобы добавить новую карточку в бота, необходимо просто отправить фотографию визитки\. Далее бот предложит действия по сохранению или её редактированию\.
 
 __2\. Изменение карточки__
@@ -37,7 +38,14 @@ __3\. Опсиание кнопок__
 \- "Получить таблицу карточек" \- бот отправит excel файл со всеми записями по визиткам, которые запомнил бот;"""
 
 
-sql.createDb() # Создание БД, если это необходимо
+class MyCallbackData():
+    def __init__(self, s: str):
+        self.s = s
+    def get(self):
+        return self.s
+
+sqlNotes.createDb() # Создание БД, если это необходимо
+sqlEditor.createDb() # Создание БД, если это необходимо
 if not os.path.isdir(d_name): # Создание директории для постоянного хранения картинок, если это необходимо
     os.mkdir(d_name)
 
@@ -47,7 +55,7 @@ def ocr_core(filename): # OCR анализ текста
 
 
 def save_image(f_name, d_name): # Сохранение картинки в  постоянное место хранения
-    shutil.copyfile(f_name, d_name + "img" + sql.lastIdInDb() + ".jpg")
+    shutil.copyfile(f_name, d_name + "img" + sqlNotes.lastIdInDb() + ".jpg")
 
 
 def create_archive(f_name, d_name): # Создание архива картинок
@@ -78,15 +86,15 @@ def start():
         elif message.text == 'Как пользоваться ботом?': # Дописать инсструкцию!
             bot.send_message(message.from_user.id, f'{text_instruction}', parse_mode='MarkdownV2')
         elif message.text == 'Получить фото-архив карточек':
-            if int(sql.lastIdInDb()) >= 0: # Проверка на наличие записей в БД
+            if int(sqlNotes.lastIdInDb()) >= 0: # Проверка на наличие записей в БД
                 create_archive(archive_name, archive_dir) # Создание архива картинок
                 bot.send_document(message.from_user.id, open(archive_name + ".zip", "rb")) # Отправка zip файла пользователю 
                 bot.send_message(message.from_user.id, f'Файл {archive_name.lstrip("./")}.zip - архив, содержащий фото всех добавленных визитных карточек.', parse_mode='Markdown')
             else: # БД пуста -> извещаем пользователя о невозможности проведения операции
                 bot.send_message(message.from_user.id, f'Архив не может быть сформирован, т.к. отсутствуют фото визитных карточек.', parse_mode='Markdown')
         elif message.text == 'Получить таблицу карточек':
-            if int(sql.lastIdInDb()) >= 0: # Проверка на наличие записей в БД
-                sql.excelDb(out_file) # Экспорт БД в Excel
+            if int(sqlNotes.lastIdInDb()) >= 0: # Проверка на наличие записей в БД
+                sqlNotes.excelDb(out_file) # Экспорт БД в Excel
                 bot.send_document(message.from_user.id, open(out_file, "rb")) # Отправка Excel файла пользователю 
                 bot.send_message(message.from_user.id, f'Файл {out_file.lstrip("./")} - таблица, содержащая все добавленные визитные карточки.', parse_mode='Markdown')
             else: # БД пуста -> извещаем пользователя о невозможности проведения операции
@@ -134,11 +142,12 @@ def start():
     def handler_edit(message, data):
         chat_id = message.chat.id
         input_data = message.text
+        key_data_id = sqlEditor.insertDb(input_data)
         keyboard = telebot.types.InlineKeyboardMarkup()
 
         column_ru = data.split(';')[2]
         button_save = telebot.types.InlineKeyboardButton(text="Сохранить",
-                                                     callback_data=f'Save;{input_data};{data}')
+                                                     callback_data=f'Save;{key_data_id};{data}')
         button_change = telebot.types.InlineKeyboardButton(text="Изменить",
                                                        callback_data=data)
         keyboard.add(button_save, button_change)
@@ -150,13 +159,15 @@ def start():
         # call - Save;input_data;Edit;column_eng;column_ru;cur_card_id
         data = call.data.split(';')
         key = data[5]
-        val = data[1]
+        key_data_id = data[1]
+        val = sqlEditor.selectrowDb(key_data_id)[0][1]
+        #print(val)
         column = data[3]
-        sql.updateDb(key, val, column)
+        sqlNotes.updateDb(key, val, column)
 
         message = call.message
         chat_id = message.chat.id
-        asnwr_bd = sql.selectrowDb(key)[0]
+        asnwr_bd = sqlNotes.selectrowDb(key)[0]
         res_str = show_data(asnwr_bd[1:])
         bot.send_message(chat_id, f"*Сохранены изменения (Карточка {key})*\n{res_str}\n*Жду новых фото или изменений*")
         
@@ -185,17 +196,17 @@ def start():
             new_file.write(downloaded_file)
         raw_data = ocr_core(f_name) # Сырые данные, полученнные из OCR
         dp = DP.DataProcessor(raw_data)
-        print(dp.dataExtract())
-        print(*dp.dataExtract())
+        #print(dp.dataExtract())
+        #print(*dp.dataExtract())
         data = (*dp.dataExtract(), "")
-        print(str(data))
+        #print(str(data))
 
         # data = ("1", "1", "1", "1", "1", "1", "1", "1") # Преобразованные данные
-        sql.insertDb(data) # Добавление данных в БД
+        sqlNotes.insertDb(data) # Добавление данных в БД
         save_image(f_name, d_name) # Сохранение картинки
 
         markup = types.InlineKeyboardMarkup()
-        cur_card_id = sql.lastIdInDb()
+        cur_card_id = sqlNotes.lastIdInDb()
         button1 = types.InlineKeyboardButton('Изменить запись', callback_data=f'Edit note;{cur_card_id}')
         button2 = types.InlineKeyboardButton('Все верно', callback_data=f'Done')
         markup.add(button1)
